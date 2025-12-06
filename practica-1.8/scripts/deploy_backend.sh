@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script para crear la BD de WordPress y el usuario en MySQL
 
-set -e  # si algo falla, el script se para
+set -ex  # si algo falla, el script se para
 
 # Cargamos las variables del .env (DB_NAME, DB_USER, DB_PASS, IP_MAQUINA_CLIENTE)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,8 +1,9 @@
 #!/bin/bash
 set -ex
 
-#Importamos el archivo .env
-source .env
+# Cargamos las variables del .env (DB_NAME, DB_USER, DB_PASS, IP_MAQUINA_CLIENTE)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/.env"
 
 #Copiamos plantilla del archivo virtual host en el server importante
 sudo cp ../conf/000-default.conf /etc/apache2/sites-available
