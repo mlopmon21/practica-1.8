@@ -13,3 +13,6 @@ apt upgrade -y
 
 #Instalamos MySQL Server
 apt install mysql-server -y
+
+#Actualiza el parametro bind-address para que acepte conexiones remotas
+cp /etc/mysql/mysql.conf.d/mysqld.cnf
