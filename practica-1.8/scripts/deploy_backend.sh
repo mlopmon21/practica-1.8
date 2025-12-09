@@ -1,24 +1,15 @@
 #!/bin/bash
-# Script para crear la BD de WordPress y el usuario en MySQL
+set -ex
 
-set -ex  # si algo falla, el script se para
+# Cargamos variables del .env
+source ../.env
 
-# Cargamos las variables del .env (DB_NAME, DB_USER, DB_PASS, IP_MAQUINA_CLIENTE)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/.env"
+# Creamos la base de datos (solo si no existe)
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
 
-echo "[BACKEND] Creando base de datos y usuario de MySQL para WordPress..."
-echo "  DB_NAME: $DB_NAME"
-echo "  DB_USER: $DB_USER"
-echo "  IP cliente permitido: $IP_MAQUINA_CLIENTE"
+# Creamos el usuario para el FRONTEND y le damos permisos
+mysql -u root -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'${IP_CLIENTE_MYSQL}' IDENTIFIED BY '${DB_PASSWORD}';"
 
-# Ejecutamos el bloque SQL que pide el enunciado
-mysql -u root <<EOF
-DROP USER IF EXISTS '$DB_USER'@'$IP_MAQUINA_CLIENTE';
-CREATE USER '$DB_USER'@'$IP_MAQUINA_CLIENTE' IDENTIFIED BY '$DB_PASS';
-CREATE DATABASE IF NOT EXISTS $DB_NAME;
-GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'$IP_MAQUINA_CLIENTE';
-FLUSH PRIVILEGES;
-EOF
+mysql -u root -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'${IP_CLIENTE_MYSQL}';"
 
-echo "[BACKEND] Usuario y base de datos configurados correctamente."
+mysql -u root -e "FLUSH PRIVILEGES;"

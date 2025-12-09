@@ -1,29 +1,29 @@
 #!/bin/bash
-
-#-e:Finaliza el script cuando hay un error
-#-x: Muestra el comando por pantalla
-set -x
-
+#-e Finaliza el script cuando hay error, -x muestra el comando por pantalla
+set -ex 
 #Actualiza los repositorios
 apt update
-
-#Actualizamos los paquetes 
+#Actualizamos los paquetes , se pone la y para que la pregunta yes la responda automáticamica a yes
 apt upgrade -y
 
-#Instalamos el servidor web apache
-apt install apache2 -y
+#Instalamos servidor web Apache
+sudo apt install apache2 -y
 
-#Instalamos PHP
-apt install php libapache2-mod-php php-mysql -y
-
-#Copiamos el archivo de configuración de Apache
-cp ../conf/000-default.conf /etc/apache2/sites-available/000-default.conf
-
-#Habilitamos el módulo rewrite de Apache
+# Habilitamos el modulo rewrite de Apache
 a2enmod rewrite
 
-#Reiniciar el servicio de Apache
-systemctl restart apache2
+#Instalamos PhP
+sudo apt install php libapache2-mod-php php-mysql -y
 
-#Modificamos el propietario y el grupo de /var/www/html
+#Copiamos el archivo de configuración de Apache
+cp ../conf/000-default.conf /etc/apache2/sites-available
+
+#Reiniciamos el servicio Apache
+sudo systemctl restart apache2
+
+#Copiamos nuestro archivo de prueba Php a /var/www/html
+
+cp ../php/index.php /var/www/html
+
+#Modificamos el propietario del directorio /var/www/html
 chown -R www-data:www-data /var/www/html

@@ -1,26 +1,38 @@
 #!/bin/bash
+#-e Finaliza el script cuando hay error, -x muestra el comando por pantalla
+set -ex 
 
-# -e: Finaliza el script cuando hay un error
-# -x: Muestra cada comando que se ejecuta
-set -ex
+# Cargamos las variables de entorno
+source ../.env
 
-# Actualiza los repositorios
-sudo apt update
+#Actualiza los repositorios
+apt update
 
-# Actualizamos los paquetes
-sudo apt upgrade -y
+#Actualizamos los paquetes , se pone la y para que la pregunta yes la responda automáticamica a yes
+apt upgrade -y
 
-# Instalamos MySQL Server
-sudo apt install -y mysql-server
+#Instalamos servidor web Apache
+sudo apt install apache2 -y
 
-echo "[BACKEND] Haciendo copia de seguridad de mysqld.cnf..."
-sudo cp /etc/mysql/mysql.conf.d/mysqld.cnf /etc/mysql/mysql.conf.d/mysqld.cnf.bak
+#Instalamos PhP
+sudo apt install php libapache2-mod-php php-mysql -y
 
-echo "[BACKEND] Configurando bind-address para aceptar conexiones remotas..."
-# Cambiamos la línea bind-address para que escuche en todas las interfaces
-sudo sed -i "s/^bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
+#Copiamos el archivo de configuración de Apache
+cp ../conf/000-default.conf /etc/apache2/sites-available
 
-echo "[BACKEND] Reiniciando MySQL..."
-sudo systemctl restart mysql
+#Reiniciamos el servicio Apache
+sudo systemctl restart apache2
 
-echo "[BACKEND] MySQL instalado y escuchando conexiones remotas."
+#Copiamos nuestro archivo de prueba Php a /var/www/html
+
+cp ../php/index.php /var/www/html
+
+# Instalamos mysql server
+apt install mysql-server -y
+
+# Configurar el parámetro bind-address
+sudo sed -i "s/127.0.0.1/$BACKEND_PRIVATE_IP/" /etc/mysql/mysql.conf.d/mysqld.cnf
+
+# Reiniciamos MySQL para aplicar la configuración
+systemctl restart mysql
+
