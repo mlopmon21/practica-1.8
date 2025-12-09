@@ -7,7 +7,7 @@ En esta práctica se automatiza la instalación y configuración de una aplicaci
 - Capa Backend: Servidor MySQL. Solo acepta conexiones desde la red privada (VPC), concretamente desde el servidor Frontend. 
 
 ## Arquitectura de la solución
-![Imagen](img/1.png)
+![Prueba](/practica-1.8/img/1.png)
 
 ## Estructura del repositorio
 ```
@@ -48,18 +48,18 @@ practica-1.8/
 - Ubuntu Server 24.04
 - IP privada (no es necesario exponer IP pública).
 
-![Imagen](img/4.png)
+![Prueba](/practica-1.8/img/4.png)
 
 Ambas deben estar en la misma VPC y subred privada para que puedan comunicarse por sus IPs privadas.
 
 **Grupos de seguridad**
 - FRONTEND: debe permitir tráfico web desde cualquier parte del mundo y SSH solo desde tu IP.
 
-![Imagen](img/2.png)
+![Prueba](/practica-1.8/img/2.png)
 
 - BACKEND: solo tú por SSH y el FRONTEND por MySQL.
 
-![Imagen](img/3.png)
+![Prueba](/practica-1.8/img/3.png)
 
 Para facilitar la configuración, al principio puedes poner 0.0.0.0/0 en el puerto 3306, probar, y luego restringirlo a la IP privada del FRONTEND.
 
@@ -406,7 +406,7 @@ Por último ejecutamos el script en la terminal:
 ```
 sudo ./deploy_frontend.sh
 ```
-![Imagen](img/5.png)
+![Prueba](/practica-1.8/img/5.png)
 
 ### PASO 7 HTTPS con Let’s Encrypt (setup_letsencrypt_https.sh)
 Este es el contenido de deploy_frontend.sh:
@@ -456,10 +456,9 @@ Por último ejecutamos el script en la terminal:
 sudo ./setup_letsencrypt_https.sh
 ```
 
-![Imagen](img/6.png)
+![Prueba](/practica-1.8/img/6.png)
 
 ### Paso 8 Comprobar el login oculto de WordPress
-![Imagen](img/7.png)
+![Imagen](/practica-1.8/img/7.png)
 
 ##### María del Mar López Montoya | 2ºDAW
-
