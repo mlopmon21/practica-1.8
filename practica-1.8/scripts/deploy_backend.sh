@@ -2,7 +2,7 @@
 set -ex
 
 # Cargamos variables del .env
-source ../.env
+source .env
 
 # Creamos la base de datos (solo si no existe)
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"

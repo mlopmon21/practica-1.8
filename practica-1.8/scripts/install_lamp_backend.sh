@@ -3,7 +3,7 @@
 set -ex 
 
 # Cargamos las variables de entorno
-source ../.env
+source .env
 
 #Actualiza los repositorios
 apt update
