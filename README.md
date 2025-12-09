@@ -65,153 +65,401 @@ Para facilitar la configuración, al principio puedes poner 0.0.0.0/0 en el puer
 
 ## Instalación Paso a Paso
 
-### PASO 1 Configuración del entorno: archivo .env
-Crea la carpeta conf/ en el proyecto y el archivo 000-default.conf con este contenido:
+### PASO 1 Configurar conf/000-default.conf
+n la carpeta conf/ tenemos el archivo de VirtualHost de Apache:
+
+conf/000-default.conf
+
+Contenido:
 
 ```
 <VirtualHost *:80>
-#ServerName www.example.com
-ServerAdmin webmaster@localhost
-DocumentRoot /var/www/html/
+    #ServerName PUT_YOUR_CERTBOT_DOMAIN_HERE
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html/
 
+    DirectoryIndex index.php index.html
 
-DirectoryIndex index.php index.html
+    <Directory /var/www/html>
+        AllowOverride All
+    </Directory>
 
-
-ErrorLog ${APACHE_LOG_DIR}/error.log
-CustomLog ${APACHE_LOG_DIR}/access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
 </VirtualHost>
 ```
+Puntos clave:
 
-### PASO 2
-Entramos en la carpeta de scripts:
+DocumentRoot /var/www/html → aquí irá WordPress.
 
-```
-cd ~/practica-1.5/scripts 
-```
+El bloque <Directory> permite que .htaccess funcione (AllowOverride All).
 
-### PASO 3
-Creamos el archivo .env con tus datos reales:
+Más adelante, el script install_lamp_frontend.sh copiará este archivo a:
 
 ```
+/etc/apache2/sites-available/000-default.conf
+
+```
+
+### PASO 2 Configurar htaccess/.htaccess
+El archivo htaccess/.htaccess contiene las reglas de reescritura para URLs amigables de WordPress:
+
+```
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule> 
+```
+
+### PASO 3 Preparar la carpeta scripts y el archivo .env
+En scripts/ tenemos los scripts de instalación y el archivo .env.
+
+### Archivo: scripts/.env
+
+```
+# ============================
+# CONFIGURACIÓN HTTPS (LETSENCRYPT EN MI FRONTEND)
+# ============================
+
+# Este es el correo que voy a usar para que Certbot me envíe avisos importantes
 CERTBOT_EMAIL=test@iescelia.org
+
+# Este es el dominio (o subdominio) que tengo apuntando a la IP pública de mi FRONTEND
 CERTBOT_DOMAIN=dawtest.ddns.net
+
+
+# ============================
+# CONFIGURACIÓN DE MI BASE DE DATOS (BACKEND)
+# ============================
+
+# Nombre de la base de datos que voy a usar para WordPress
+DB_NAME=wordpress
+
+# Usuario de MySQL que voy a crear para que WordPress se conecte
+DB_USER=db_user
+
+# Contraseña del usuario de MySQL anterior
+DB_PASSWORD=db_password
+
+# Nombre DNS interno de mi máquina FRONTEND dentro de la VPC.
+# Si en mis scripts uso esta variable para crear el usuario en MySQL,
+# este será el "host" desde el que permito que se conecte.
+IP_MAQUINA_CLIENTE=ip-172-31-26-110.ec2.internal
+
+# IP PRIVADA de mi servidor BACKEND (donde está MySQL).
+# Esta IP es la que WordPress usará como DB_HOST en wp-config.php.
+DB_HOST=172.31.22.171
+
+
+# ============================
+# CONFIGURACIÓN DE MI WORDPRESS
+# ============================
+
+# Título que le voy a poner a mi sitio WordPress
+WORDPRESS_TITLE="Sitio de DAW"
+
+# Usuario administrador que voy a usar para entrar en WordPress
+WORDPRESS_ADMIN_USER=admin
+
+# Contraseña del usuario administrador de WordPress
+WORDPRESS_ADMIN_PASSWORD=password
+
+# Correo del administrador de WordPress (el mío)
+WORDPRESS_ADMIN_EMAIL=admin@iescelia.org
+
+
+# ============================
+# SEGURIDAD Y OTRAS VARIABLES
+# ============================
+
+# Ruta "secreta" que voy a usar para acceder al login de WordPress
+# (por ejemplo: http://MI_DOMINIO/secreto)
+URL_HIDE_LOGIN=secreto
+
+# IP PRIVADA de mi BACKEND, que usaré como ayuda en algunos scripts
+# (por ejemplo para configurar el bind-address de MySQL)
+BACKEND_PRIVATE_IP=172.31.22.171
+
 ```
 
-### PASO 4
-Copiamos el script install_lamp.sh del proyecto anterior.
-Por si no lo tienes son los siguientes comandos: 
+### PASO 4 Configuración de la máquina BACKEND
+Todo este paso se hace conectado por SSH a la instancia BACKEND.
+
+### Ejecutar install_lamp_backend.sh
+Este es el contenido de install_lamp_backend.sh:
 
 ```
 #!/bin/bash
+#-e Finaliza el script cuando hay error, -x muestra el comando por pantalla
+set -ex 
 
-#-e:Finaliza el script cuando hay un error
-#-x: Muestra el comando por pantalla
-set -x
+# Cargamos las variables de entorno
+source .env
 
 #Actualiza los repositorios
 apt update
 
-#Actualizamos los paquetes 
+#Actualizamos los paquetes , se pone la y para que la pregunta yes la responda automáticamica a yes
 apt upgrade -y
 
-#Instalamos el servidor web apache
-apt install apache2 -y
+#Instalamos servidor web Apache
+sudo apt install apache2 -y
 
-#Instalamos PHP
-apt install php libapache2-mod-php php-mysql -y
+#Instalamos PhP
+sudo apt install php libapache2-mod-php php-mysql -y
 
 #Copiamos el archivo de configuración de Apache
-cp ../conf/000-default.conf /etc/apache2/sites-available/000-default.conf
+cp ../conf/000-default.conf /etc/apache2/sites-available
 
-#Habilitamos el módulo rewrite de Apache
-a2enmod rewrite
+#Reiniciamos el servicio Apache
+sudo systemctl restart apache2
 
-#Reiniciar el servicio de Apache
-systemctl restart apache2
+#Copiamos nuestro archivo de prueba Php a /var/www/html
 
+cp ../php/index.php /var/www/html
+
+# Instalamos mysql server
+apt install mysql-server -y
+
+# Configurar el parámetro bind-address
+sudo sed -i "s/127.0.0.1/$BACKEND_PRIVATE_IP/" /etc/mysql/mysql.conf.d/mysqld.cnf
+
+# Reiniciamos MySQL para aplicar la configuración
+systemctl restart mysql
 ```
 Le damos permiso con el siguiente comando:
 
 ```
-chmod +x install_lamp.sh
+chmod +x install_lamp_backend.sh
 ```
 
 Por último ejecutamos el script en la terminal:
 
 ```
-sudo ./install_lamp.sh
+sudo ./install_lamp_backend.sh
 ```
-### PASO 5
-Creeamos el fichero setup_letsencrypt_certificate.sh dentro del directorio scripts. Con el siguiente contenido:
+
+### Ejecutar deploy_backend.sh
+
+Este es el contenido de deploy_backend.sh:
 
 ```
 #!/bin/bash
 set -ex
 
-#Importamos el archivo .env
+# Cargamos variables del .env
 source .env
 
-#Copiamos plantilla del archivo virtual host en el server importante
-sudo cp ../conf/000-default.conf /etc/apache2/sites-available
+# Creamos la base de datos (solo si no existe)
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
 
-#Realizamos la instalación y actualización del snap
-sudo snap install core
-sudo snap refresh core
+# Creamos el usuario para el FRONTEND y le damos permisos
+mysql -u root -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'${IP_MAQUINA_CLIENTE}' IDENTIFIED BY '${DB_PASSWORD}';"
 
-#Eliminamos instalaciones previas a cerbot
-sudo apt remove certbot -y
+mysql -u root -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'${IP_MAQUINA_CLIENTE}';"
 
-#Instalamos certbot
-sudo snap install --classic certbot
-
-# Creamos una alias para el comando certbot.
-sudo ln -fs /snap/bin/certbot /usr/bin/certbot
-
-# Obtenemos el certificado y configuramos el servidor web Apache.
-#sudo certbot --apache
-
-#Solicitamos el certificado a Let´s Encrypt
-certbot --apache -m $CERTBOT_EMAIL --agree-tos --no-eff-email -d $CERTBOT_DOMAIN --non-interactive
+mysql -u root -e "FLUSH PRIVILEGES;"
 ```
-### PASO 6
-Ejecutamos el srcipt de Cerbot:
+Le damos permiso con el siguiente comando:
 
 ```
-sudo ./setup_letsencrypt_certificate.sh
+chmod +x deploy_backend.sh
 ```
-En el caso de ser necesario antes de ejecutarlo procede a dar permisos:
 
-```
-chmod +x setup_letsencrypt_certificate.sh
-```
-### PASO 7
-Durante la ejecución del comando anterior tendremos que contestar algunas preguntas:
-
-- Habrá que introducir una dirección de correo electrónico. (Ejemplo: demo@demo.es)
-- Aceptar los términos de uso. (Ejemplo: y)
-- Nos preguntará si queremos compartir nuestra dirección de correo electrónico con la Electronic Frontier Foundation. (Ejemplo: n)
-- Y finalmente nos preguntará el nombre del dominio, si no lo encuentra en los archivos de configuración del servidor web. (Ejemplo: practicahttps.ml)
-
-Si todo esta correcto la terminal se mostrara como en la imagen.
-
-![Imagen](img/1.png)
-
-### PASO 8
-Mostramos todos los temporizadores activos del sistema, incluyendo su nombre, el servicio que activan, la fecha y hora de la próxima ejecución, el tiempo que queda hasta esa ejecución y el estado del temporizador:
+Por último ejecutamos el script en la terminal:
 
 ```
-systemctl list-timers
+sudo ./deploy_backend.sh
 ```
-![Imagen](img/3.png)
 
-### PASO 9
-Una vez llegado hasta este punto tendríamos nuestro sitio web con HTTPS habilitado y todo configurado para que el certificado se vaya renovando automáticamente. Y se mostrara en nuestra web el candado como en la siguiente imagen:
+### PASO 5 Configuración de la máquina FRONTEND
+Todo este paso se hace conectado por SSH a la instancia FRONTEND.
 
-![Imagen](img/2.png)
-![Imagen](img/4.png)
+### Ejecutar install_lamp_frontend.sh
+
+Este es el contenido de install_lamp_frontend.sh:
+
+```
+#!/bin/bash
+#-e Finaliza el script cuando hay error, -x muestra el comando por pantalla
+set -ex 
+#Actualiza los repositorios
+apt update
+#Actualizamos los paquetes , se pone la y para que la pregunta yes la responda automáticamica a yes
+apt upgrade -y
+
+#Instalamos servidor web Apache
+sudo apt install apache2 -y
+
+# Habilitamos el modulo rewrite de Apache
+a2enmod rewrite
+
+#Instalamos PhP
+sudo apt install php libapache2-mod-php php-mysql -y
+
+#Copiamos el archivo de configuración de Apache
+cp ../conf/000-default.conf /etc/apache2/sites-available
+
+#Reiniciamos el servicio Apache
+sudo systemctl restart apache2
+
+#Copiamos nuestro archivo de prueba Php a /var/www/html
+
+cp ../php/index.php /var/www/html
+
+#Modificamos el propietario del directorio /var/www/html
+chown -R www-data:www-data /var/www/html
+```
+Le damos permiso con el siguiente comando:
+
+```
+chmod +x install_lamp_frontend.sh
+```
+
+Por último ejecutamos el script en la terminal:
+
+```
+sudo ./install_lamp_frontend.sh
+```
+
+### PASO 6 Desplegar WordPress (deploy_frontend.sh)
+Este es el contenido de deploy_frontend.sh:
+
+```
+#!/bin/bash
+
+set -ex
+
+# Importamos las variables de entorno
+source .env
+
+# Eliminamos descargas previas de WP-CLI
+rm -f /tmp/wp-cli.phar
+
+# Descargamos WP-CLI
+wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -P /tmp
+
+# Le asignamos permisos de ejecución
+chmod +x /tmp/wp-cli.phar
+
+# Movemos wp-cli.phar a /usr/local/bin/wp
+mv /tmp/wp-cli.phar /usr/local/bin/wp
+
+# Eliminamos instalaciones previas de WordPress
+rm -rf /var/www/html/*
+
+# Descargamos WordPress en español en el directorio /var/www/html
+wp core download --locale=es_ES --path=/var/www/html --allow-root
+
+# Creamos el archivo wp-config.php apuntando al BACKEND
+# CORRECCIÓN: Usamos DB_PASS para coincidir con el estándar
+wp config create \
+  --dbname="$DB_NAME" \
+  --dbuser="$DB_USER" \
+  --dbpass="$DB_PASSWORD" \
+  --dbhost="$DB_HOST" \
+  --path=/var/www/html \
+  --allow-root
+
+# Instalamos WordPress
+wp core install \
+  --url="$CERTBOT_DOMAIN" \
+  --title="$WORDPRESS_TITLE" \
+  --admin_user="$WORDPRESS_ADMIN_USER" \
+  --admin_password="$WORDPRESS_ADMIN_PASSWORD" \
+  --admin_email="$WORDPRESS_ADMIN_EMAIL" \
+  --path=/var/www/html \
+  --allow-root   
+
+# Configuramos los enlaces permanentes
+wp rewrite structure '/%postname%/' \
+  --path=/var/www/html \
+  --allow-root
+
+# Instalamos el plugin de WPS Hide Login
+wp plugin install wps-hide-login --activate \
+    --path=/var/www/html \
+    --allow-root
+
+# Configuramos una URL personalizada para la página de login
+wp option update whl_page "$URL_HIDE_LOGIN" --path=/var/www/html --allow-root
+
+# Copiamos el archivo .htaccess a /var/www/html
+cp ../htaccess/.htaccess /var/www/html/.htaccess
+
+# Modificamos el propietario y el grupo de /var/www/html a www-data
+chown -R www-data:www-data /var/www/html
+```
+Le damos permiso con el siguiente comando:
+
+```
+chmod +x deploy_frontend.sh
+```
+
+Por último ejecutamos el script en la terminal:
+
+```
+sudo ./deploy_frontend.sh
+```
+![Imagen](img/5.png)
+
+### PASO 7 HTTPS con Let’s Encrypt (setup_letsencrypt_https.sh)
+Este es el contenido de deploy_frontend.sh:
+
+```
+#!/bin/bash
+set -ex
+
+#importamos el archivo .env
+source .env
+
+#copiamos la plantilla del archivo VirtualHost en el servidor
+cp ../conf/000-default.conf /etc/apache2/sites-available
 
 
+#configuramos el Servername en el VirtualHost, buscamos PUT_YOUR_CERTBOT_DOMAIN_HERE y reemplazar por $CERTBOT_DOMAIN
+sed -i "s/PUT_YOUR_CERTBOT_DOMAIN_HERE/$CERTBOT_DOMAIN/" /etc/apache2/sites-available/000-default.conf
+
+
+#Instalamos snap
+snap install core
+snap refresh core
+
+
+#Eliminamos
+apt remove certbot -y
+
+#Instalamos cerbot
+
+snap install --classic certbot
+
+
+#solicitamos el certificado a Let's Encrypt
+
+certbot --apache -m "$CERTBOT_EMAIL" --agree-tos --no-eff-email -d "$CERTBOT_DOMAIN" --non-interactive
+
+```
+Le damos permiso con el siguiente comando:
+
+```
+chmod +x setup_letsencrypt_https.sh
+```
+
+Por último ejecutamos el script en la terminal:
+
+```
+sudo ./setup_letsencrypt_https.sh
+```
+
+![Imagen](img/6.png)
+
+### Paso 8 Comprobar el login oculto de WordPress
+![Imagen](img/7.png)
 
 ##### María del Mar López Montoya | 2ºDAW
 
