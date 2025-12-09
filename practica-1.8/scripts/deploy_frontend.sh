@@ -3,7 +3,7 @@
 set -ex
 
 # Importamos las variables de entorno
-source ../.env
+source .env
 
 # Eliminamos descargas previas de WP-CLI
 rm -f /tmp/wp-cli.phar
@@ -24,6 +24,7 @@ rm -rf /var/www/html/*
 wp core download --locale=es_ES --path=/var/www/html --allow-root
 
 # Creamos el archivo wp-config.php apuntando al BACKEND
+# CORRECCIÓN: Usamos DB_PASS para coincidir con el estándar
 wp config create \
   --dbname="$DB_NAME" \
   --dbuser="$DB_USER" \
@@ -40,7 +41,7 @@ wp core install \
   --admin_password="$WORDPRESS_ADMIN_PASSWORD" \
   --admin_email="$WORDPRESS_ADMIN_EMAIL" \
   --path=/var/www/html \
-  --allow-root  
+  --allow-root   
 
 # Configuramos los enlaces permanentes
 wp rewrite structure '/%postname%/' \
