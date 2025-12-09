@@ -66,7 +66,7 @@ Para facilitar la configuración, al principio puedes poner 0.0.0.0/0 en el puer
 ## Instalación Paso a Paso
 
 ### PASO 1 Configurar conf/000-default.conf
-n la carpeta conf/ tenemos el archivo de VirtualHost de Apache:
+En la carpeta conf/ tenemos el archivo de VirtualHost de Apache:
 
 conf/000-default.conf
 
