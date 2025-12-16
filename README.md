@@ -461,4 +461,15 @@ sudo ./setup_letsencrypt_https.sh
 ### Paso 8 Comprobar el login oculto de WordPress
 ![Imagen](/practica-1.8/img/7.png)
 
+### Scripts
+#### Deploy Backend
+![Imagen](/practica-1.8/img/deploybackend1.8.png)
+#### Install Backend
+![Imagen](/practica-1.8/img/installbackend1.8.png)
+#### Deploy Frontend
+![Imagen](/practica-1.8/img/deployfrontend1.8.png)
+#### Install Frontend
+![Imagen](/practica-1.8/img/installfrontend1.8.png)
+
+
 ##### María del Mar López Montoya | 2ºDAW
